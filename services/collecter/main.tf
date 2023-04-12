@@ -79,3 +79,91 @@ module "myapp" {
     module.listener_rule
   ]
 }
+
+module "scaling" {
+  source            = "./module/step-scaling/"
+  cluster_name      = data.aws_ecs_cluster.this.cluster_name
+  service_name      = module.myapp.ecs_service_name
+  app_name          = format("%s-%s", local.name_prefix, local.container_name)
+  tags              = local.tags
+  # scaling policy
+  step_scaling_name = "cpu-high"
+  adjustment_type   = "ChangeInCapacity"
+  step_adjustment   = [
+    {
+      metric_interval_lower_bound = null
+      metric_interval_upper_bound = 10.0
+      scaling_adjustment          = 0
+    },
+    {
+      metric_interval_lower_bound = 10.0
+      metric_interval_upper_bound = 20.0
+      scaling_adjustment          = 1
+    },
+    {
+      metric_interval_lower_bound = 20.0
+      metric_interval_upper_bound = 30
+      scaling_adjustment          = 1
+    },
+    {
+      metric_interval_lower_bound = 30.0
+      metric_interval_upper_bound = null
+      scaling_adjustment          = 1
+    },
+  ]
+
+  # cloudwatch metric
+  metric_name         = "CPUUtilization"
+  threshold           = 50.0
+  period              = 30
+  evaluation_periods  = 2
+  comparison_operator = "GreaterThanThreshold"
+  statistic           = "Average"
+  depends_on          = [
+    module.myapp
+  ]
+}
+
+
+module "scaling_down" {
+  source            = "./module/step-scaling/"
+  cluster_name      = data.aws_ecs_cluster.this.cluster_name
+  service_name      = module.myapp.ecs_service_name
+  app_name          = format("%s-%s", local.name_prefix, local.container_name)
+  tags              = local.tags
+  # scaling policy
+  step_scaling_name = "cpu-low"
+  #adjustment_type   = "ExactCapacity"
+
+  step_adjustment   = [
+    {
+      # 30 ~ 20
+      metric_interval_lower_bound = -10.0
+      metric_interval_upper_bound = null
+      scaling_adjustment          = 1
+    },
+    {
+      # 20 ~ 10
+      metric_interval_lower_bound = -20.0
+      metric_interval_upper_bound = -10.0
+      scaling_adjustment          = -1
+    },
+    {
+      # 10 ~
+      metric_interval_lower_bound =  null
+      metric_interval_upper_bound = -20.0
+      scaling_adjustment          = -1
+    },
+  ]
+
+  # cloudwatch metric
+  metric_name         = "CPUUtilization"
+  threshold           = 30.0
+  period              = 60
+  evaluation_periods  = 2
+  comparison_operator = "LessThanThreshold"
+  statistic           = "Average"
+  depends_on          = [
+    module.myapp
+  ]
+}
