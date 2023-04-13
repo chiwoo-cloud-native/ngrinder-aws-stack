@@ -21,9 +21,10 @@ module "agent" {
   container_name         = local.container_name
   container_image        = local.container_image
   container_port         = -1
+  desired_count          = 5
   command                = [
     format("%s-controller.%s:80", local.project, data.aws_service_discovery_dns_namespace.this.name)
   ]
-  target_group_arn       = null
-  enable_load_balancer   = false
+  target_group_arn     = null
+  enable_load_balancer = false
 }

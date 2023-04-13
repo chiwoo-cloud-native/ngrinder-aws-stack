@@ -6,20 +6,21 @@ locals {
   project         = module.ctx.project
   name_prefix     = module.ctx.name_prefix
   tags            = module.ctx.tags
-  container_name  = "collecter"
+  container_name  = "collector"
   container_image = "symplesims/spring-reactive-collector-s3:1-jdk17"
   container_port  = 8080
 }
 
 #  CREATE - TargetGroup
 module "tg8080" {
-  source               = "git::https://github.com/chiwooiac/tfmodule-aws-alb.git//modules/target_group"
-  vpc_id               = data.aws_vpc.this.id
-  target_group_name    = format("%s-%s-tg", local.name_prefix, local.container_name)
-  port                 = local.container_port
-  health_check_path    = "/health"
-  health_check_matcher = "200"
-  tags                 = local.tags
+  source                = "git::https://github.com/chiwooiac/tfmodule-aws-alb.git//modules/target_group"
+  vpc_id                = data.aws_vpc.this.id
+  target_group_name     = format("%s-%s-tg", local.name_prefix, local.container_name)
+  port                  = local.container_port
+  health_check_path     = "/health"
+  health_check_matcher  = "200"
+  health_check_interval = 20
+  tags                  = local.tags
 }
 
 # Add - Listener rule
@@ -135,7 +136,7 @@ module "scaling_down" {
   step_scaling_name = "cpu-low"
   #adjustment_type   = "ExactCapacity"
 
-  step_adjustment   = [
+  step_adjustment = [
     {
       # 30 ~ 20
       metric_interval_lower_bound = -10.0
@@ -150,7 +151,7 @@ module "scaling_down" {
     },
     {
       # 10 ~
-      metric_interval_lower_bound =  null
+      metric_interval_lower_bound = null
       metric_interval_upper_bound = -20.0
       scaling_adjustment          = -1
     },
@@ -164,6 +165,7 @@ module "scaling_down" {
   comparison_operator = "LessThanThreshold"
   statistic           = "Average"
   depends_on          = [
-    module.myapp
+    module.myapp,
+    module.scaling
   ]
 }
